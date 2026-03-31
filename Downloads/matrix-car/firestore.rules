@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - email: string (required, format: email)
+    //   - displayName: string (optional)
+    //   - photoURL: string (optional)
+    //   - role: string (required, enum: ['admin', 'user'])
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: listings
+    // Document ID: listingId
+    // Fields:
+    //   - uid: string (required, immutable, owner UID)
+    //   - category: string (required, enum: ['Car', 'Part'])
+    //   - title: string (required, min: 3, max: 100)
+    //   - price: number (required, positive)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: chats
+    // Document ID: chatId
+    // Fields:
+    //   - senderId: string (required, immutable)
+    //   - receiverId: string (required, immutable)
+    //   - message: string (required, max: 1000)
+    //   - timestamp: timestamp (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "mood.11.cade@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.uid is string &&
+             data.email is string && isValidEmail(data.email) &&
+             data.role in ['admin', 'user'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidListing(data) {
+      return data.uid is string &&
+             data.category in ['Car', 'Part'] &&
+             data.title is string && data.title.size() >= 3 && data.title.size() <= 100 &&
+             data.price is number && data.price >= 0 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidChat(data) {
+      return data.senderId is string &&
+             data.receiverId is string &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 1000 &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && areImmutableFieldsUnchanged(['uid', 'createdAt', 'role'])) || isAdmin();
+    }
+
+    match /listings/{listingId} {
+      allow read: if true; // Publicly readable marketplace
+      allow create: if isAuthenticated() && isValidListing(request.resource.data) && request.resource.data.uid == request.auth.uid;
+      allow update: if (isDocOwner() && isValidListing(request.resource.data) && areImmutableFieldsUnchanged(['uid', 'createdAt'])) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /chats/{chatId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId || isAdmin());
+      allow create: if isAuthenticated() && isValidChat(request.resource.data) && request.resource.data.senderId == request.auth.uid;
+    }
+
+    match /users/{userId}/savedListings/{savedId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

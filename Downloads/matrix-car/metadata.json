@@ -1,0 +1,5 @@
+{
+  "name": "Matrix Car",
+  "description": "Electric and Hybrid Vehicle Marketplace in Jordan",
+  "requestFramePermissions": ["microphone"]
+}

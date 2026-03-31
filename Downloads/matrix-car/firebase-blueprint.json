@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Listing": {
+      "title": "Listing",
+      "description": "Car or Part listing",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Owner UID" },
+        "category": { "type": "string", "enum": ["Car", "Part"] },
+        "partType": { "type": "string" },
+        "title": { "type": "string" },
+        "make": { "type": "string" },
+        "model": { "type": "string" },
+        "year": { "type": "integer" },
+        "engineType": { "type": "string" },
+        "listingType": { "type": "string", "enum": ["Sale", "Rent"] },
+        "rentalDuration": { "type": "string" },
+        "condition": { "type": "string" },
+        "engineSize": { "type": "string" },
+        "gearbox": { "type": "string" },
+        "drivetrain": { "type": "string" },
+        "batteryType": { "type": "string" },
+        "batterySize": { "type": "string" },
+        "mileage": { "type": "string" },
+        "governorate": { "type": "string" },
+        "location": { "type": "string" },
+        "price": { "type": "number" },
+        "phone": { "type": "string" },
+        "isFeatured": { "type": "boolean" },
+        "allowTestDrive": { "type": "boolean" },
+        "imageUrls": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "category", "title", "price", "createdAt"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "Chat message between users",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "listingId": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "receiverId", "message", "timestamp"]
+    },
+    "SavedListing": {
+      "title": "SavedListing",
+      "description": "User's saved listings",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "listingId": { "type": "string" },
+        "savedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "listingId", "savedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/listings/{listingId}": {
+      "schema": "Listing",
+      "description": "Marketplace listings"
+    },
+    "/chats/{chatId}": {
+      "schema": "Chat",
+      "description": "Chat messages"
+    },
+    "/users/{userId}/savedListings/{savedId}": {
+      "schema": "SavedListing",
+      "description": "User's favorite listings"
+    }
+  }
+}
